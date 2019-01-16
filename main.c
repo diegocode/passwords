@@ -3,13 +3,26 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+ * This program generates a password between 8 and 32 characters, then
+ * rate its "strength"
+ *
+ * "Strength" is calculated emulating http://www.passwordmeter.com/
+ * "additions"
+ *
+ * "Deductions" are calculated substracting:
+ *    - repetitions * 2
+ *    - correlatives * 4
+ *
+ */
+
 #define MAX_LEN 32
 #define MIN_LEN 8
 
 int max_strength(int lon);
 int str_consecutive(char* str);
 int str_no_repeat(char *str_result, char *str_origin);
-int password_strength(char * p, int symqty, int pswlon);
+int password_strength(char * p, int pswlon);
 
 int main() {
     int length = 0;
@@ -18,7 +31,7 @@ int main() {
     char password[MAX_LEN + 1] = {0};
 
     srand(time(NULL));
-//length = 10;
+
     scanf("%d", &length);
 
     if ((length < MIN_LEN) || (length > MAX_LEN)) {
@@ -26,31 +39,29 @@ int main() {
         return 1;
     }
 
+    // only this piece of code generates password...
     for(int p = 0; p < length; p++) {
         rnum = rand() % 93 + 33;
         password[p] = rnum;
     }
 
-//    password[0] = '&';
-//    password[1] = '-';
-//    password[2] = 'e';
-//    password[3] = 's';
-//    password[4] = '!';
-//    password[5] = '=';
-//    password[6] = 'k';
-//    password[7] = '2';
-//    password[8] = '}';
-//    password[9] = 'b';
-
-    printf("%d\n", max_strength(length));
-
-    printf("%s\n",password);
-    printf("%d\n", password_strength(password, 93, length ));
-    printf("%.2f%%\n", password_strength(password, 93, length ) / (1.0 * max_strength(length)) * 100.0);
+    printf("Generated password: %s\n",password);
+    printf("Password strentgth:\n");
+    printf(" - %d / %d\n",
+            password_strength(password, length),
+            max_strength(length));
+    printf(" - %.2f%%\n",
+            password_strength(password, length)
+            / (1.0 * max_strength(length)) * 100.0);
 
     return 0;
 }
 
+/*
+ * Functions to calculate strength
+ */
+
+// returns number of consecutive digits or letters in a string
 int str_consecutive(char* str) {
     int consec = 0;
     if (strlen(str) > 1) {
@@ -64,6 +75,22 @@ int str_consecutive(char* str) {
     return consec;
 }
 
+/*
+ * Builds a string "str_result" with the contents of "str_origin"
+ * without duplicated characters
+ *
+ * returns: length of str_result
+ *
+ * ej.:
+ *
+ *    char* alfa = "abaccd";
+ *    char beta[7] = {0};
+ *    int a = str_no_repeat(beta, alfa);
+ *
+ *    -> beta:  abcd
+ *    -> a = 4
+ *
+ */
 int str_no_repeat(char *str_result, char *str_origin) {
     char* aux = 0;
     char* aux_ini = str_result;
@@ -84,7 +111,30 @@ int str_no_repeat(char *str_result, char *str_origin) {
     return (str_result - aux_ini);
 }
 
-int password_strength(char * str, int symqty, int pswlon){
+/*
+ * Calculates password strength
+ *
+ * plus:
+ *
+ * +4 each character
+ * +4 each number
+ * +4 each symbol
+ * +2 each symbol not in the beginning nor end
+ * +(len - #uppercase) * 2 -if any
+ * +(len - #lowercase) * 2 -if any
+ * +2 each satisfied requirement:
+ *    . len >= 8
+ *    . uppercase letters
+ *    . lowercase letters
+ *    . numbers
+ *    . symbols
+ *
+ * minus:
+ *
+ * -4 each pair of correlative symbols
+ * -2 each duplicate symbol
+ */
+int password_strength(char * str, int pswlon){
     char* p = str;
     int strength = 0;
     char dos[MAX_LEN + 1] = {0};
@@ -123,17 +173,6 @@ int password_strength(char * str, int symqty, int pswlon){
         str++;
     }
 
-/*    printf("%d\n", pswlon * 4);
-    printf("%d\n", upper_qty ? ((pswlon - upper_qty) * 2) : 0);
-    printf("%d\n", lower_qty ? ((pswlon - lower_qty) * 2) : 0);
-    printf("%d\n", (number_qty * 4));
-    printf("%d\n", (symbol_qty * 6));
-    printf("%d\n", midd_symnum_qty * 2);
-    printf("%d\n", (
-                           (upper_qty > 0) + (lower_qty > 0) +
-                           (number_qty > 0) + (symbol_qty > 0) +
-                           (pswlon >= 8)   ) * 2);*/
-
     strength += (pswlon * 4);
     strength += (upper_qty ? ((pswlon - upper_qty) * 2) : 0);
     strength += (lower_qty ? ((pswlon - lower_qty) * 2) : 0);
@@ -151,6 +190,10 @@ int password_strength(char * str, int symqty, int pswlon){
     return strength;
 }
 
+// returns max password strength for a given password length
 int max_strength(int lon) {
-    return 8 + lon * 4 + (lon - 1) * 2 * 2 + (lon - 2) * 6 + (lon - 2) * 2;
+    return 8 + lon * 4
+            + (lon - 1) * 2 * 2
+            + (lon - 2) * 6
+            + (lon - 2) * 2;
 }
